@@ -18,6 +18,13 @@
 #define BPP 4
 #define DEPTH 32
 
+#define PASSABLE_STATE 0x1
+
+typedef struct maploc_s {
+    int x;
+    int y;
+} maploc_t;
+
 const int MAX_ACTORS = 4;
 
 const int MAP_MAXX=4;
@@ -34,11 +41,15 @@ GLuint font_texture;
 GLuint sprite_map;
 
 char MAP[MAP_MAXX][MAP_MAXY] = {
-    { 'x',  'x',  'x',  'x', },
-    { 'x',  'x',  'x',  'x', },
-    { 'x',  'x',  'x',  'x', },
-    { 'x',  'w',  'x',  'x', }
+    { 'w',  'f',  'f',  'x', },
+    { 'f',  'w',  'f',  'f', },
+    { 'f',  'f',  'w',  'f', },
+    { 'e',  'f',  'f',  'w', }
 };
+
+
+char MAPSTATE[MAP_MAXX][MAP_MAXY] = { 0 };
+
 
 class Actor {
     public:
@@ -52,10 +63,13 @@ class Actor {
         bool active = false;
         Uint32 time_initialized;
         Uint32 last_updated;
+        maploc_t maploc;
+        char  *job_type;
 
         void Init(Uint32 now) {
             time_initialized = now;
             last_updated = now;
+            active = true;
         }
 
         void Update(Uint32 now) {
@@ -74,13 +88,47 @@ class Actor {
 };
 
 Actor actors[MAX_ACTORS];
-Actor &theplayer = actors[0];
+Actor *theplayer = &actors[0];
 
-void InitActors() {
-    for(int j=0; j < MAX_ACTORS; j++) {
-        actors[j].pos[0] = 100 + (j * 75);
-        actors[j].pos[1] = 100.0;
+void FindEntryPoint(maploc_t &loc)
+{
+    loc.x = -1;
+    loc.y = -1;
+    for(int i=0; i < MAP_MAXY; i++) 
+    {
+        for(int j=0; j < MAP_MAXX; j++) 
+        {
+            if(MAP[i][j] == 'e') {
+                loc.y = i;
+                loc.x = j;
+                return;
+            }                
+        }
     }
+}
+
+void InitEntities() {
+    for(int i=0; i < MAP_MAXY; i++) 
+    {
+        for(int j=0; j < MAP_MAXX; j++) 
+        {
+            char typ = MAP[i][j];
+            if(typ == 'f' || typ == 'e') {
+                MAPSTATE[i][j] |= PASSABLE_STATE;
+            }
+        }
+    }
+
+    maploc_t loc;
+    FindEntryPoint(loc);
+    for(int j=0; j < MAX_ACTORS; j++) {
+        actors[j].maploc.x = loc.x;
+        actors[j].maploc.y = loc.y;
+    }
+    actors[0].job_type = "builder";
+    actors[1].job_type = "warrior";
+    actors[2].job_type = "keymaster";
+    actors[3].job_type = "digger";
 }
 
 void Display_InitGL()
@@ -108,26 +156,28 @@ void DrawCircle(float radius, float x, float y, float z)
 
 void DrawMap() 
 {
-    int cury = 0;
     for(int i=MAP_MAXY-1; i >= 0; i--) 
     {
+        int cury = i * MAP_TILE_LENGTH;
         for(int j=0; j < MAP_MAXX; j++) 
         {
             char typ = MAP[i][j];
-            if(typ == 'x') {
+            if(typ == 'f') {
                 glColor3f(0.5, 0.5, 0.5);
             }
             else if(typ == 'w') {
                 glColor3f(0.0, 0.0, 1.0);
+            } else {
+                glColor3f(1.0, 0.05, 0.5);
             }
+            int curx = j * MAP_TILE_LENGTH;
             glBegin(GL_QUADS);
-            glVertex3f(j * MAP_TILE_LENGTH, cury, 0.0);
-            glVertex3f((j * MAP_TILE_LENGTH)+MAP_TILE_LENGTH, cury, 0.0);
-            glVertex3f((j * MAP_TILE_LENGTH)+MAP_TILE_LENGTH, cury+MAP_TILE_LENGTH, 0.0);
-            glVertex3f((j * MAP_TILE_LENGTH), cury+MAP_TILE_LENGTH, 0.0);
+            glVertex3f(curx, cury, 0.0);
+            glVertex3f(curx+MAP_TILE_LENGTH, cury, 0.0);
+            glVertex3f(curx+MAP_TILE_LENGTH, cury+MAP_TILE_LENGTH, 0.0);
+            glVertex3f(curx, cury+MAP_TILE_LENGTH, 0.0);
             glEnd();
         }
-        cury += MAP_TILE_LENGTH;
     }
 }
 
@@ -137,7 +187,7 @@ void Display_Render()
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     glViewport(0, 0, WIDTH, HEIGHT);
-
+		
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0.0, WIDTH, 0, HEIGHT, -1.0f, 1.0f);
@@ -154,15 +204,26 @@ void Display_Render()
     DrawMap();
     for(int j=0; j < MAX_ACTORS; j++) {
         Actor *actor = &actors[j];
+        int xoffset = 0;
+        int yoffset = 0;
         if(actor->active) 
         {
             glColor3f(1.0, 1.0, 0.0);
-            DrawCircle(actor->radius, actor->pos[0], actor->pos[1], actor->pos[2]);
+
+            if(j == 0) { glColor3f(1.0, 0.0, 0.0); }
+            if(j == 1) { xoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.0, 1.0, 0.0); }
+            if(j == 2) { yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.0, 0.0, 1.0); }
+            if(j == 3) { xoffset = MAP_TILE_LENGTH * 0.5; yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 0.0); }
+
+            float x = (actor->maploc.x * MAP_TILE_LENGTH) + actor->radius + xoffset;
+            float y = (actor->maploc.y * MAP_TILE_LENGTH) + actor->radius + yoffset;
+
+            DrawCircle(actor->radius, x, y, actor->pos[2]);
         }
     }
     SetFontSize(HEIGHT / 32);
     SetFontColor(1.0, 1.0, 1.0);
-    DrawFontString(10, 10, "abc");
+    DrawFontString(10, HEIGHT-(HEIGHT/32), "abc");
     SDL_GL_SwapWindow(window);
 }
 
@@ -174,6 +235,31 @@ bool collided(const int x, const int y, const Actor &actor) {
     return pow(x-actor.pos[0], 2.0f) + pow(y-actor.pos[1], 2.0f) < pow(actor.radius, 2.0f); 
 }
 
+bool CanMove(Actor *actor, int xoffset, int yoffset) {
+    if(actor->maploc.x + xoffset < 0) { return false; }
+    if(actor->maploc.y + yoffset < 0) { return false; }
+
+    if(actor->maploc.x + xoffset >= MAP_MAXX) { return false; } 
+    if(actor->maploc.y + yoffset >= MAP_MAXY) { return false; }
+
+    int xidx = actor->maploc.x + xoffset;
+    int yidx = actor->maploc.y + yoffset;
+
+    if(MAPSTATE[yidx][xidx] & PASSABLE_STATE) {
+       return true;   
+    }
+
+    return false;
+}
+
+void Work(Actor *actor, int xoffset, int yoffset) {
+    int xidx = actor->maploc.x + xoffset;
+    int yidx = actor->maploc.y + yoffset;
+
+    if(strcmp(actor->job_type, "builder") == 0 && MAP[yidx][xidx] == 'w') {
+       MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -199,7 +285,7 @@ int main(int argc, char* argv[])
     const char *fimage = "images/font-8bit.png";
     SDL_Load_GL_Image(fimage, font_texture);
 
-    InitActors();
+    InitEntities();
     bool quit = false;
     SDL_Event e;
     int mx, my;
@@ -208,7 +294,6 @@ int main(int argc, char* argv[])
     for(int j=0; j < MAX_ACTORS; j++) 
     {
         actors[j].Init(gtime);
-        theplayer.active=true;
     }
 
     while(!quit) 
@@ -232,21 +317,52 @@ int main(int argc, char* argv[])
                     } 
                     else if(e.key.keysym.sym == SDLK_LEFT) 
                     {
-                        theplayer.pos[0] -= 25;
+                        if(CanMove(theplayer, -1, 0)) 
+                        {
+                            theplayer->maploc.x -= 1;
+                        } else {
+                            Work(theplayer, -1, 0);
+                        }
                     } 
                     else if(e.key.keysym.sym == SDLK_RIGHT) 
                     {
-                        theplayer.pos[0] += 25;
+                        if(CanMove(theplayer, 1, 0)) 
+                        {
+                            theplayer->maploc.x += 1;
+                        } else {
+                            Work(theplayer, 1, 0);
+                        }
                     }
                     else if(e.key.keysym.sym == SDLK_UP) 
                     {
-                        theplayer.pos[1] += 25;
+                        if(CanMove(theplayer, 0, 1)) 
+                        {
+                            theplayer->maploc.y += 1;
+                        } else {
+                            Work(theplayer, 0, 1);
+                        }
                     }
                     else if(e.key.keysym.sym == SDLK_DOWN) 
                     {
-                        theplayer.pos[1] -= 25;
+                        if(CanMove(theplayer, 0, -1)) 
+                        {
+                            theplayer->maploc.y -= 1;
+                        } else {
+                            Work(theplayer, 0, -1);
+                        }
+                    } 
+                    else if(e.key.keysym.sym == SDLK_1) {
+                        theplayer = &actors[0];
                     }
-
+                    else if(e.key.keysym.sym == SDLK_2) {
+                        theplayer = &actors[1];
+                    }
+                    else if(e.key.keysym.sym == SDLK_3) {
+                        theplayer = &actors[2];
+                    }
+                    else if(e.key.keysym.sym == SDLK_4) {
+                        theplayer = &actors[3];
+                    }
                     break;
                 case SDL_KEYUP:
                     break;
