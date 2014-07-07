@@ -40,10 +40,17 @@ Uint32 gtime;
 GLuint font_texture;
 GLuint sprite_map;
 
+// w - water
+// f - floor
+// x - exit
+// e - entry
+// d - dirt
+// r - door
+// s - skeletons
 char MAP[MAP_MAXX][MAP_MAXY] = {
-    { 'w',  'f',  'f',  'x', },
-    { 'f',  'w',  'f',  'f', },
-    { 'f',  'f',  'w',  'f', },
+    { 's',  'f',  'f',  'x', },
+    { 'f',  'r',  'f',  'f', },
+    { 'f',  'f',  'd',  'f', },
     { 'e',  'f',  'f',  'w', }
 };
 
@@ -164,11 +171,18 @@ void DrawMap()
             char typ = MAP[i][j];
             if(typ == 'f') {
                 glColor3f(0.5, 0.5, 0.5);
-            }
-            else if(typ == 'w') {
+            } else if(typ == 'w') {
                 glColor3f(0.0, 0.0, 1.0);
-            } else {
-                glColor3f(1.0, 0.05, 0.5);
+            } else if(typ == 'd') {
+                glColor3f(0.90, 0.9, 0.7);
+            } else if(typ == 'r') {
+                glColor3f(0.5, 0.5, 0.25);
+            } else if(typ == 's') {
+                glColor3f(1.0, 1.0, 1.0);
+            } else if(typ == 'x') {
+                glColor3f(0.0, 0.25, 0.0);
+            } else if(typ == 'e') {
+                glColor3f(0.0, 0.50, 0.0);
             }
             int curx = j * MAP_TILE_LENGTH;
             glBegin(GL_QUADS);
