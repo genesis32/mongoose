@@ -57,7 +57,6 @@ char MAP[MAP_MAXX][MAP_MAXY] = {
 
 char MAPSTATE[MAP_MAXX][MAP_MAXY] = { 0 };
 
-
 class Actor {
     public:
         Actor() { 
@@ -178,7 +177,7 @@ void DrawMap()
             } else if(typ == 'r') {
                 glColor3f(0.5, 0.5, 0.25);
             } else if(typ == 's') {
-                glColor3f(1.0, 1.0, 1.0);
+                glColor3f(0.9, 0.9, 0.9);
             } else if(typ == 'x') {
                 glColor3f(0.0, 0.25, 0.0);
             } else if(typ == 'e') {
@@ -224,10 +223,10 @@ void Display_Render()
         {
             glColor3f(1.0, 1.0, 0.0);
 
-            if(j == 0) { glColor3f(1.0, 0.0, 0.0); }
-            if(j == 1) { xoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.0, 1.0, 0.0); }
-            if(j == 2) { yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.0, 0.0, 1.0); }
-            if(j == 3) { xoffset = MAP_TILE_LENGTH * 0.5; yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 0.0); }
+            if(strcmp(actor->job_type, "builder") == 0) { glColor3f(0.0, 0.0, 1.0); }
+            if(strcmp(actor->job_type, "digger") == 0)  { xoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 0.8); }
+            if(strcmp(actor->job_type, "keymaster") == 0) { yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.75, 0.75, 0.37); }
+            if(strcmp(actor->job_type, "warrior") == 0) { xoffset = MAP_TILE_LENGTH * 0.5; yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 1.0); }
 
             float x = (actor->maploc.x * MAP_TILE_LENGTH) + actor->radius + xoffset;
             float y = (actor->maploc.y * MAP_TILE_LENGTH) + actor->radius + yoffset;
@@ -271,6 +270,15 @@ void Work(Actor *actor, int xoffset, int yoffset) {
     int yidx = actor->maploc.y + yoffset;
 
     if(strcmp(actor->job_type, "builder") == 0 && MAP[yidx][xidx] == 'w') {
+       MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
+    }
+    if(strcmp(actor->job_type, "keymaster") == 0 && MAP[yidx][xidx] == 'r') {
+       MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
+    }
+    if(strcmp(actor->job_type, "warrior") == 0 && MAP[yidx][xidx] == 's') {
+       MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
+    }
+    if(strcmp(actor->job_type, "digger") == 0 && MAP[yidx][xidx] == 'd') {
        MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
     }
 }
