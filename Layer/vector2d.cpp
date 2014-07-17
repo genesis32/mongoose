@@ -20,7 +20,7 @@ void Vec2_Normalize(vec2d_t vec)
 void Pt2_GetHeadingTo(vec2d_t outv, const pt2d_t frm, const pt2d_t to)
 {
 	outv[0] = to[0] - frm[0];
-	outv[0] = to[1] - frm[1];
+	outv[1] = to[1] - frm[1];
 	
 	Vec2_Normalize(outv);
 }
