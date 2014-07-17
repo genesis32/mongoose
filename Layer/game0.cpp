@@ -12,8 +12,9 @@
 #include "font.h"
 #include "SDL_opengl_util.h"
 #include "Logger.h"
+#include "vector2d.h"
 
-#define WIDTH 1024
+#define WIDTH 768
 #define HEIGHT 768
 #define BPP 4
 #define DEPTH 32
@@ -27,10 +28,10 @@ typedef struct maploc_s {
 
 const int MAX_ACTORS = 4;
 
-const int MAP_MAXX=4;
-const int MAP_MAXY=4;
+const int MAP_MAXX=12;
+const int MAP_MAXY=12;
 
-const int MAP_TILE_LENGTH=128; // play area is 512x512
+const int MAP_TILE_LENGTH=64; // play area is 512x512
 
 SDL_Window *window;
 SDL_GLContext ctx;
@@ -42,16 +43,25 @@ GLuint sprite_map;
 
 // w - water
 // f - floor
+// l - wall
 // x - exit
 // e - entry
 // d - dirt
 // r - door
 // s - skeletons
 char MAP[MAP_MAXX][MAP_MAXY] = {
-    { 's',  'f',  'f',  'x', },
-    { 'f',  'r',  'f',  'f', },
-    { 'f',  'f',  'd',  'f', },
-    { 'e',  'f',  'f',  'w', }
+    {'f','f','f','f','f','f','f','f','f','f','f','x'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'f','l','f','f','f','f','f','f','f','f','f','f'},
+    {'e','f','f','f','f','f','f','f','f','f','f','f'}
 };
 
 
@@ -61,7 +71,7 @@ class Actor {
     public:
         Actor() { 
             pos[2] = 0.1;
-            radius = 25;
+            radius = 16;
         }
         float pos[3];
         float vel[3];	
@@ -182,6 +192,8 @@ void DrawMap()
                 glColor3f(0.0, 0.25, 0.0);
             } else if(typ == 'e') {
                 glColor3f(0.0, 0.50, 0.0);
+            } else if(typ == 'l') {
+                glColor3f(0.0, 0.0, 0.0);
             }
             int curx = j * MAP_TILE_LENGTH;
             glBegin(GL_QUADS);
@@ -257,6 +269,10 @@ bool CanMove(Actor *actor, int xoffset, int yoffset) {
 
     int xidx = actor->maploc.x + xoffset;
     int yidx = actor->maploc.y + yoffset;
+
+    if(MAP[yidx][xidx] == 'l') {
+        return false;
+    }
 
     if(MAPSTATE[yidx][xidx] & PASSABLE_STATE) {
        return true;   
