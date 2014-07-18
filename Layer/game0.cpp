@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <vector>
 
 #include "font.h"
 #include "SDL_opengl_util.h"
@@ -31,7 +32,7 @@ const int MAX_ACTORS = 4;
 const int MAP_MAXX=12;
 const int MAP_MAXY=12;
 
-const int MAP_TILE_LENGTH=64; // play area is 512x512
+const int MAP_TILE_LENGTH=64; // play area is 768x768
 
 SDL_Window *window;
 SDL_GLContext ctx;
@@ -49,21 +50,21 @@ GLuint sprite_map;
 // d - dirt
 // r - door
 // s - skeletons
+
 char MAP[MAP_MAXX][MAP_MAXY] = {
-    {'f','f','f','f','f','f','f','f','f','f','f','x'},
+    {'f','f' | 0x1,'f','f','f','f','f','f','f','f','f','x'},
+    {'l','l','l','l','f','l','f','l','f','l','f','l'},
+    {'l','l','l','l','f','l','f','l','f','l','f','l'},
+    {'l','l','l','l','f','l','f','l','f','l','f','l'},
+    {'l','l','l','l','s','l','d','l','r','l','w','l'},
     {'f','f','f','f','f','f','f','f','f','f','f','f'},
+    {'w','l','r','l','d','l','s','l','l','l','l','l'},
+    {'f','l','f','l','f','l','f','l','f','l','f','l'},
+    {'f','l','f','l','f','l','f','l','f','l','f','l'},
+    {'f','l','f','l','f','l','f','l','f','l','f','l'},
     {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'f','l','f','f','f','f','f','f','f','f','f','f'},
     {'e','f','f','f','f','f','f','f','f','f','f','f'}
 };
-
 
 char MAPSTATE[MAP_MAXX][MAP_MAXY] = { 0 };
 
@@ -179,7 +180,7 @@ void DrawMap()
         {
             char typ = MAP[i][j];
             if(typ == 'f') {
-                glColor3f(0.5, 0.5, 0.5);
+                glColor3f(0.0, 0.0, 0.0);
             } else if(typ == 'w') {
                 glColor3f(0.0, 0.0, 1.0);
             } else if(typ == 'd') {
@@ -193,7 +194,7 @@ void DrawMap()
             } else if(typ == 'e') {
                 glColor3f(0.0, 0.50, 0.0);
             } else if(typ == 'l') {
-                glColor3f(0.0, 0.0, 0.0);
+                glColor3f(0.3, 0.3, 0.3);
             }
             int curx = j * MAP_TILE_LENGTH;
             glBegin(GL_QUADS);
