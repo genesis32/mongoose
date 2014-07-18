@@ -51,19 +51,28 @@ GLuint sprite_map;
 // r - door
 // s - skeletons
 
-char MAP[MAP_MAXX][MAP_MAXY] = {
-    {'f','f' | 0x1,'f','f','f','f','f','f','f','f','f','x'},
-    {'l','l','l','l','f','l','f','l','f','l','f','l'},
-    {'l','l','l','l','f','l','f','l','f','l','f','l'},
-    {'l','l','l','l','f','l','f','l','f','l','f','l'},
-    {'l','l','l','l','s','l','d','l','r','l','w','l'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'w','l','r','l','d','l','s','l','l','l','l','l'},
-    {'f','l','f','l','f','l','f','l','f','l','f','l'},
-    {'f','l','f','l','f','l','f','l','f','l','f','l'},
-    {'f','l','f','l','f','l','f','l','f','l','f','l'},
-    {'f','f','f','f','f','f','f','f','f','f','f','f'},
-    {'e','f','f','f','f','f','f','f','f','f','f','f'}
+#define FL 1 
+#define WL 1 << 1 
+#define EN 1 << 2 
+#define EX 1 << 3 
+#define WT 1 << 4 
+#define DR 1 << 5 
+#define DT 1 << 6
+#define SK 1 << 7
+
+int MAP[MAP_MAXX][MAP_MAXY] = {
+    {FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,EX},
+    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,WL,WL,SK,WL,DT,WL,DR,WL,WT,WL},
+    {FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL},
+    {WT,WL,DR,WL,DT,WL,SK,WL,WL,WL,WL,WL},
+    {FL,WL,FL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {FL,WL,FL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {FL,WL,FL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL},
+    {EN,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL}
 };
 
 char MAPSTATE[MAP_MAXX][MAP_MAXY] = { 0 };
@@ -115,7 +124,7 @@ void FindEntryPoint(maploc_t &loc)
     {
         for(int j=0; j < MAP_MAXX; j++) 
         {
-            if(MAP[i][j] == 'e') {
+            if(MAP[i][j] & EN) {
                 loc.y = i;
                 loc.x = j;
                 return;
@@ -130,7 +139,7 @@ void InitEntities() {
         for(int j=0; j < MAP_MAXX; j++) 
         {
             char typ = MAP[i][j];
-            if(typ == 'f' || typ == 'e') {
+            if(typ & FL || typ & EN) {
                 MAPSTATE[i][j] |= PASSABLE_STATE;
             }
         }
@@ -179,21 +188,21 @@ void DrawMap()
         for(int j=0; j < MAP_MAXX; j++) 
         {
             char typ = MAP[i][j];
-            if(typ == 'f') {
+            if(typ & FL) {
                 glColor3f(0.0, 0.0, 0.0);
-            } else if(typ == 'w') {
+            } else if(typ & WT) {
                 glColor3f(0.0, 0.0, 1.0);
-            } else if(typ == 'd') {
+            } else if(typ & DT) {
                 glColor3f(0.90, 0.9, 0.7);
-            } else if(typ == 'r') {
+            } else if(typ & DR) {
                 glColor3f(0.5, 0.5, 0.25);
-            } else if(typ == 's') {
+            } else if(typ & SK) {
                 glColor3f(0.9, 0.9, 0.9);
-            } else if(typ == 'x') {
+            } else if(typ & EX) {
                 glColor3f(0.0, 0.25, 0.0);
-            } else if(typ == 'e') {
+            } else if(typ & EN) {
                 glColor3f(0.0, 0.50, 0.0);
-            } else if(typ == 'l') {
+            } else if(typ & WL) {
                 glColor3f(0.3, 0.3, 0.3);
             }
             int curx = j * MAP_TILE_LENGTH;
@@ -271,7 +280,7 @@ bool CanMove(Actor *actor, int xoffset, int yoffset) {
     int xidx = actor->maploc.x + xoffset;
     int yidx = actor->maploc.y + yoffset;
 
-    if(MAP[yidx][xidx] == 'l') {
+    if(MAP[yidx][xidx] & WL) {
         return false;
     }
 
@@ -286,16 +295,16 @@ void Work(Actor *actor, int xoffset, int yoffset) {
     int xidx = actor->maploc.x + xoffset;
     int yidx = actor->maploc.y + yoffset;
 
-    if(strcmp(actor->job_type, "builder") == 0 && MAP[yidx][xidx] == 'w') {
+    if(strcmp(actor->job_type, "builder") == 0 && MAP[yidx][xidx] & WT) {
        MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
     }
-    if(strcmp(actor->job_type, "keymaster") == 0 && MAP[yidx][xidx] == 'r') {
+    if(strcmp(actor->job_type, "keymaster") == 0 && MAP[yidx][xidx] & DR) {
        MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
     }
-    if(strcmp(actor->job_type, "warrior") == 0 && MAP[yidx][xidx] == 's') {
+    if(strcmp(actor->job_type, "warrior") == 0 && MAP[yidx][xidx] & SK) {
        MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
     }
-    if(strcmp(actor->job_type, "digger") == 0 && MAP[yidx][xidx] == 'd') {
+    if(strcmp(actor->job_type, "digger") == 0 && MAP[yidx][xidx] & DT ) {
        MAPSTATE[yidx][xidx] |= PASSABLE_STATE; 
     }
 }
