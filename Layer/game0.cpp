@@ -40,7 +40,11 @@ SDL_GLContext ctx;
 Uint32 gtime;
 
 GLuint font_texture;
-GLuint sprite_map;
+GLuint dungeon_sprite_map;
+
+#define DUNGEON_TILE_LEN 32.0f
+#define DUNGEON_TILE_WIDTH 2048.0f
+#define DUNGEON_TILE_HEIGHT 1536.0f
 
 // w - water
 // f - floor
@@ -60,11 +64,13 @@ GLuint sprite_map;
 #define DT 1 << 6
 #define SK 1 << 7
 
+#define HAS_TREASURE 1 << 8 
+
 int MAP[MAP_MAXX][MAP_MAXY] = {
     {FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,EX},
-    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
-    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
-    {WL,WL,WL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,FL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,FL,WL,FL,WL,FL,WL,FL,WL,FL,WL},
+    {WL,WL,FL | HAS_TREASURE,WL,FL,WL,FL,WL,FL,WL,FL,WL},
     {WL,WL,WL,WL,SK,WL,DT,WL,DR,WL,WT,WL},
     {FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL,FL},
     {WT,WL,DR,WL,DT,WL,SK,WL,WL,WL,WL,WL},
@@ -170,6 +176,8 @@ int Display_SetViewport( int width, int height )
 
 void DrawCircle(float radius, float x, float y, float z) 
 {
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
 
     glEnable(GL_POINT_SMOOTH);
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -180,38 +188,95 @@ void DrawCircle(float radius, float x, float y, float z)
     glEnd();
 }
 
+float get_sprite_coord(float i, float len, float max) {
+    return (i * len) / max;
+}
+
 void DrawMap() 
 {
+    glDisable(GL_BLEND);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, dungeon_sprite_map);
+    glColor3f(1.0, 1.0, 1.0);
+
     for(int i=MAP_MAXY-1; i >= 0; i--) 
     {
         int cury = i * MAP_TILE_LENGTH;
         for(int j=0; j < MAP_MAXX; j++) 
         {
-            char typ = MAP[i][j];
+            int typ = MAP[i][j];
+            int xoffset = 0; 
+            int yoffset = 0;
             if(typ & FL) {
-                glColor3f(0.0, 0.0, 0.0);
+                yoffset = 13; xoffset = 22;
             } else if(typ & WT) {
-                glColor3f(0.0, 0.0, 1.0);
+                yoffset = 19; xoffset = 19;
             } else if(typ & DT) {
-                glColor3f(0.90, 0.9, 0.7);
+                yoffset = 14; xoffset = 25;
             } else if(typ & DR) {
-                glColor3f(0.5, 0.5, 0.25);
+                yoffset = 11; xoffset = 24;
             } else if(typ & SK) {
-                glColor3f(0.9, 0.9, 0.9);
+                yoffset = 3; xoffset = 2;
             } else if(typ & EX) {
-                glColor3f(0.0, 0.25, 0.0);
+                yoffset = 45; xoffset = 4;
             } else if(typ & EN) {
-                glColor3f(0.0, 0.50, 0.0);
+                yoffset = 45; xoffset = 5;
             } else if(typ & WL) {
-                glColor3f(0.3, 0.3, 0.3);
+                yoffset = 17; xoffset= 39;
             }
             int curx = j * MAP_TILE_LENGTH;
+
+	    float minx = get_sprite_coord(xoffset, DUNGEON_TILE_LEN, DUNGEON_TILE_WIDTH) + (1.0f / DUNGEON_TILE_WIDTH);
+            float maxx = get_sprite_coord(xoffset+1, DUNGEON_TILE_LEN, DUNGEON_TILE_WIDTH) - (1.0f / DUNGEON_TILE_WIDTH);
+
+            float miny = get_sprite_coord(yoffset, DUNGEON_TILE_LEN, DUNGEON_TILE_HEIGHT) + (1.0f / DUNGEON_TILE_HEIGHT);
+	    float maxy = get_sprite_coord(yoffset + 1, DUNGEON_TILE_LEN, DUNGEON_TILE_HEIGHT) - (1.0f / DUNGEON_TILE_HEIGHT);
+
+
             glBegin(GL_QUADS);
+
+            glTexCoord2f(minx, maxy);
             glVertex3f(curx, cury, 0.0);
+
+            glTexCoord2f(maxx, maxy);
             glVertex3f(curx+MAP_TILE_LENGTH, cury, 0.0);
+
+            glTexCoord2f(maxx, miny);
             glVertex3f(curx+MAP_TILE_LENGTH, cury+MAP_TILE_LENGTH, 0.0);
+
+            glTexCoord2f(minx, miny);
             glVertex3f(curx, cury+MAP_TILE_LENGTH, 0.0);
+
             glEnd();
+
+            if(typ & HAS_TREASURE) {
+              glEnable( GL_BLEND );
+              glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );  
+
+              float minx = get_sprite_coord(0, DUNGEON_TILE_LEN, DUNGEON_TILE_WIDTH) + (1.0f / DUNGEON_TILE_WIDTH);
+              float maxx = get_sprite_coord(1, DUNGEON_TILE_LEN, DUNGEON_TILE_WIDTH) - (1.0f / DUNGEON_TILE_WIDTH);
+
+              float miny = get_sprite_coord(12, DUNGEON_TILE_LEN, DUNGEON_TILE_HEIGHT) + (1.0f / DUNGEON_TILE_HEIGHT);
+              float maxy = get_sprite_coord(13, DUNGEON_TILE_LEN, DUNGEON_TILE_HEIGHT) - (1.0f / DUNGEON_TILE_HEIGHT);
+
+              glBegin(GL_QUADS);
+
+              glTexCoord2f(minx, maxy);
+              glVertex3f(curx, cury, 0.1);
+
+              glTexCoord2f(maxx, maxy);
+              glVertex3f(curx+MAP_TILE_LENGTH, cury, 0.1);
+
+              glTexCoord2f(maxx, miny);
+              glVertex3f(curx+MAP_TILE_LENGTH, cury+MAP_TILE_LENGTH, 0.1);
+
+              glTexCoord2f(minx, miny);
+              glVertex3f(curx, cury+MAP_TILE_LENGTH, 0.1);
+
+              glEnd();
+
+              glDisable( GL_BLEND );
+            }
         }
     }
 }
@@ -230,12 +295,6 @@ void Display_Render()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();       
 
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, font_texture);
-
-    glDisable(GL_BLEND);
-    glDisable(GL_TEXTURE_2D);
-
     DrawMap();
     for(int j=0; j < MAX_ACTORS; j++) {
         Actor *actor = &actors[j];
@@ -248,7 +307,7 @@ void Display_Render()
             if(strcmp(actor->job_type, "builder") == 0) { glColor3f(0.0, 0.0, 1.0); }
             if(strcmp(actor->job_type, "digger") == 0)  { xoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 0.8); }
             if(strcmp(actor->job_type, "keymaster") == 0) { yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.75, 0.75, 0.37); }
-            if(strcmp(actor->job_type, "warrior") == 0) { xoffset = MAP_TILE_LENGTH * 0.5; yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(1.0, 1.0, 1.0); }
+            if(strcmp(actor->job_type, "warrior") == 0) { xoffset = MAP_TILE_LENGTH * 0.5; yoffset = MAP_TILE_LENGTH * 0.5; glColor3f(0.9, 0.9, 0.9); }
 
             float x = (actor->maploc.x * MAP_TILE_LENGTH) + actor->radius + xoffset;
             float y = (actor->maploc.y * MAP_TILE_LENGTH) + actor->radius + yoffset;
@@ -256,6 +315,12 @@ void Display_Render()
             DrawCircle(actor->radius, x, y, actor->pos[2]);
         }
     }
+
+
+    glDisable(GL_BLEND);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, font_texture);
+
     SetFontSize(HEIGHT / 32);
     SetFontColor(1.0, 1.0, 1.0);
     DrawFontString(10, HEIGHT-(HEIGHT/32), "abc");
@@ -330,8 +395,8 @@ int main(int argc, char* argv[])
 
     Logger::InstanceOf().SetPrintToStdout(true);
     LoadFontMap();
-    const char *fimage = "images/font-8bit.png";
-    SDL_Load_GL_Image(fimage, font_texture);
+    SDL_Load_GL_Image("images/font-8bit.png", font_texture);
+    SDL_Load_GL_Image("images/dungeon_tileset.png", dungeon_sprite_map);
 
     InitEntities();
     bool quit = false;
